@@ -80,9 +80,12 @@ async def main():
         # await page.screenshot(path = "s.png")
 
         groups = pd.read_json('groups.json')['groups_names'].unique()
-        columns = ['title', 
+        columns = ['date',
                    'text',
-                   'author']
+                   'author',
+                   'nbcomments',
+                   'nbshares',
+                   'nbreacts']
         dataset = pd.DataFrame(columns = columns)
         for group in groups:
             print(group)
