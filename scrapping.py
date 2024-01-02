@@ -2,26 +2,66 @@ import asyncio
 from playwright.async_api import async_playwright
 import pandas as pd
 import time
+import random
+
+def randomsleep(min, max):
+    time.sleep(random.randint(min*1000, max*1000)/1000)
+
+async def cookies(page):
+    print("cookies")
+    button_selector = '[data-cookiebanner = "accept_only_essential_button"]'
+    if await page.query_selector(button_selector) == None:
+        return False
+    
+    randomsleep(0, 2)
+    await page.click(button_selector)
+    return True
+
+async def connect(page):
+    print("connect")
+
+    await cookies(page)
+    mail_selector = '[id = "email"]'
+    password_selector = '[id = "pass"]'
+    button_selector = '[id = "loginbutton"]'
+    if await page.query_selector(mail_selector) == None:
+        return False
+    
+    await page.fill(mail_selector, 'dataextracproject@gmail.com')
+    randomsleep(0, 2)
+    await page.fill(password_selector, 'DauphineIASD1!')
+    randomsleep(0, 2)
+    await page.click(button_selector)
+    await page.wait_for_load_state('load')
+    return True
+
+
+async def royal_connect(page):
+    print("royal_connect")
+    await cookies(page)
+    mail_selector = '[data-testid = "royal_email"]'
+    password_selector = '[data-testid = "royal_pass"]'
+    button_selector = '[data-testid = "royal_login_button"]'
+    if await page.query_selector(mail_selector) == None:
+        return False
+    
+    await page.fill(mail_selector, 'dataextracproject@gmail.com')
+    randomsleep(0, 2)
+    await page.fill(password_selector, 'DauphineIASD1!')
+    randomsleep(0, 2)
+    await page.click(button_selector)
+    await page.wait_for_load_state('load')
+    return True
 
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless = False)
         page = await browser.new_page()
 
-        # await page.goto("http://www.facebook.com")
-
-        # button_selector = '[data-cookiebanner = "accept_only_essential_button"]'
-        # await page.click(button_selector)
-
-        # input_selector = '[data-testid = "royal_email"]'
-        # await page.fill(input_selector, 'dataextracproject@gmail.com')
-            
-        # input_selector = '[data-testid = "royal_pass"]'
-        # await page.fill(input_selector, 'DauphineIASD1!')
-
-        # button_selector = '[data-testid = "royal_login_button"]'
-        # await page.click(button_selector)
-        # await page.wait_for_load_state('load')
+        await page.goto("https://www.facebook.com")
+        await royal_connect(page)
+        randomsleep(4, 6)
+        await connect(page)
 
         # lis = await page.query_selector_all('li')
         # for li in lis:
@@ -45,9 +85,18 @@ async def main():
                    'author']
         dataset = pd.DataFrame(columns = columns)
         for group in groups:
+            print(group)
             await page.goto(group)
+            randomsleep(2, 4)
+            if await royal_connect(page):
+                randomsleep(2, 4)
+            if await connect(page):
+                randomsleep(2, 4)
             await page.wait_for_load_state('load')
-            time.sleep(4)
+            randomsleep(2, 4)
+            for _ in range(10):
+                await page.mouse.wheel(0, 1000)
+                randomsleep(1, 2)
             await page.screenshot(path = "group.png")
 
 
