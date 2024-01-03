@@ -1,4 +1,5 @@
 ne pas mettre les mdp dans le code
+gérer le blocage de compte
 dans les textes : 
 - récupérer les inner_text() des balises ET DE LEURS ENFANTS (ex : si tag ou lien, alors balises dans balise)
 - récupérer les émojis (rajouter dans texte si balise "img" contient 'height' et 'width' = 16 (dans ce cas rajouter 'alt' dans texte sinon 'href'))
@@ -6,3 +7,8 @@ dans les textes :
 "" = balise, '' = attribut
 
 prendre que les posts qui ont "3j" ou moins. pour se faire : on scroll un nombre fixe de fois, si trop de posts d'affilé on + de 3j (ex: 10), on s'arrete. 
+
+Adresse mails:
+dataextracproject@gmail.com. gmail : DauphineIASD1!. facebook : DauphineIASD1!
+dataextracproject2@gmail.com. gmail : DauphineIASD1!. facebook : DauphineIASD2!
+dataextracproject3@gmail.com. gmail : DauphineIASD3!. facebook : DauphineIASD3!
