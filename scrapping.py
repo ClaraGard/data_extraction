@@ -35,7 +35,6 @@ async def connect(page):
     await page.wait_for_load_state('load')
     return True
 
-
 async def royal_connect(page):
     print("royal_connect")
     await cookies(page)
@@ -52,6 +51,16 @@ async def royal_connect(page):
     await page.click(button_selector)
     await page.wait_for_load_state('load')
     return True
+
+async def get_inner_text(element):
+    inner_text = element.text_content()
+
+    child_elements = element.query_selector_all('*')  # Get all child elements
+
+    for child_element in child_elements:
+        inner_text += get_inner_text(child_element)  # Recursively get innerText for each child
+
+    return inner_text
 
 async def main():
     async with async_playwright() as p:
@@ -97,31 +106,50 @@ async def main():
                 randomsleep(2, 4)
             await page.wait_for_load_state('load')
             randomsleep(2, 4)
-            for _ in range(10):
-                await page.mouse.wheel(0, 1000)
-                randomsleep(1, 2)
-            await page.screenshot(path = "group.png")
+            # for _ in range(10):
+            #     await page.mouse.wheel(0, 1000)
+            #     randomsleep(1, 2)
+            # await page.screenshot(path = "group.png")
+            feed_selector = 'div[role = "feed"]'
+            nb_of_posts = await page.query_selector(feed_selector)
+            nb_of_posts = await nb_of_posts.query_selector_all('xpath=child::*')
+            print(len(nb_of_posts))
+            for i in range(2, len(nb_of_posts) + 1):
+                element = await page.query_selector(feed_selector + f' > div:nth-child({i})')
+                print(element)
+                # Check if the element has any children
+                has_children = await element.query_selector('xpath=child::*')
+                if has_children:
+                    print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}' has children.")
+                else:
+                    print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}'")
+                      
+                author_selector = feed_selector \
+                                + f' > div:nth-child({i})' \
+                                + ' > div'*8 \
+                                + ' > div:nth-child(2)' \
+                                + ' > div'*2 \
+                                + ' > div:nth-child(2)' \
+                                + ' > div' \
+                                + ' > div:nth-child(2)' \
+                                + ' > div'*2 \
+                                + ' > span' \
+                                + ' > h3' \
+                                + ' > span'*2 \
+                                + ' > a' \
+                                + ' > strong' \
+                                + ' > span'
+                print(author_selector)
+                await page.wait_for_load_state('load')  
+                await page.wait_for_selector(author_selector, timeout = 20000, state = 'hidden')
+                author = await page.locator(author_selector).text_content()
+                print(author)
+                new_ligne = [None, None, author, None, None, None]
+                dataset = dataset.append(pd.Series(new_ligne, index = dataset.columns), ignore_index = True)
 
         await browser.close()
 
 asyncio.run(main())
 
-feed_selector = 'div[role = "feed"]'
-nb_of_posts = page.query_selector_all(feed_selector).count()
-for i in range(nb_of_posts):
-    author_selector = feed_selector \
-                      + ' > div'*9 \
-                      + ' > div:nth-child(2)' \
-                      + ' > div'*3 \
-                      + ' > div:nth-child(2)' \
-                      + ' > div' \
-                      + ' > div:nth-child(2)' \
-                      + ' > div'*2 \
-                      + ' > span' \
-                      + ' > h3' \
-                      + ' > span'*2 \
-                      + ' > a' \
-                      + ' > strong' \
-                      + ' > span'
-    author = page.query_selector(author_selector).inner_text()
+
 
