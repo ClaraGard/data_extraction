@@ -4,6 +4,8 @@ import pandas as pd
 import time
 import random
 
+feed_selector = 'div[role = "feed"]'
+
 def randomsleep(min, max):
     time.sleep(random.randint(min*1000, max*1000)/1000)
 
@@ -27,9 +29,9 @@ async def connect(page):
     if await page.query_selector(mail_selector) == None:
         return False
     
-    await page.fill(mail_selector, 'dataextracproject@gmail.com')
+    await page.fill(mail_selector, 'dataextracproject2@gmail.com')
     randomsleep(0, 2)
-    await page.fill(password_selector, 'DauphineIASD1!')
+    await page.fill(password_selector, 'DauphineIASD2!')
     randomsleep(0, 2)
     await page.click(button_selector)
     await page.wait_for_load_state('load')
@@ -44,9 +46,9 @@ async def royal_connect(page):
     if await page.query_selector(mail_selector) == None:
         return False
     
-    await page.fill(mail_selector, 'dataextracproject@gmail.com')
+    await page.fill(mail_selector, 'dataextracproject2@gmail.com')
     randomsleep(0, 2)
-    await page.fill(password_selector, 'DauphineIASD1!')
+    await page.fill(password_selector, 'DauphineIASD2!')
     randomsleep(0, 2)
     await page.click(button_selector)
     await page.wait_for_load_state('load')
@@ -62,6 +64,44 @@ async def get_inner_text(element):
 
     return inner_text
 
+async def get_author(page, i):
+    post = feed_selector + f' > div:nth-child({i})'
+    element = await page.query_selector(post)
+    has_children = await element.query_selector('xpath=child::*')
+    if not has_children:
+        print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}'")
+        for i in range(random.randint(10)):
+            await page.mouse.wheel(0, 500)
+            randomsleep(0.1, 0.5)
+    else:
+        print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}' has children.")
+
+    author_and_data_selector = feed_selector \
+                    + f' > div:nth-child({i})' \
+                    + ' > div'*9 \
+                    + ' > div:nth-child(2)' \
+                    + ' > div'*2 \
+                    + ' > div:nth-child(2)' \
+                    + ' > div' \
+                    + ' > div:nth-child(2)' \
+                    + ' > div'*2 \
+                    + ' > span' \
+                    + ' > h3' \
+                    + ' > span' \
+    
+    author_and_data = await page.locator(author_and_data_selector).text_content()
+    author_selector = await page.query_selector(author_and_data_selector)
+    author_selector = await author_selector.query_selector_all('xpath=child::*')
+    author = ''
+    for s in author_selector:
+        text = await s.text_content()
+        if text:
+            author = text
+            break
+    data = author_and_data.replace(author+" ", "", 1)
+    print("author: ", author, "\ndata: ", data, "\nboth: ", author_and_data, sep="")
+    return author, data
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless = False)
@@ -70,7 +110,8 @@ async def main():
         await page.goto("https://www.facebook.com")
         await royal_connect(page)
         randomsleep(4, 6)
-        await connect(page)
+        if await connect(page):
+            randomsleep(4, 6)
 
         # lis = await page.query_selector_all('li')
         # for li in lis:
@@ -92,86 +133,31 @@ async def main():
         columns = ['date',
                    'text',
                    'author',
+                   'authordata',
                    'nbcomments',
                    'nbshares',
                    'nbreacts']
         dataset = pd.DataFrame(columns = columns)
         for group in groups:
-            print(group)
             await page.goto(group)
             randomsleep(2, 4)
             if await royal_connect(page):
                 randomsleep(2, 4)
             if await connect(page):
                 randomsleep(2, 4)
-            await page.wait_for_load_state('load')
-            randomsleep(2, 4)
-            # for _ in range(10):
-            #     await page.mouse.wheel(0, 1000)
-            #     randomsleep(1, 2)
-            await page.screenshot(path = "group.png")
-            feed_selector = 'div[role = "feed"]'
             nb_of_posts = await page.query_selector(feed_selector)
             nb_of_posts = await nb_of_posts.query_selector_all('xpath=child::*')
-            print(len(nb_of_posts))
-            for i in range(2, len(nb_of_posts) + 1):
-                for _ in range(10):
-                    await page.mouse.wheel(0, 1000)
-                    randomsleep(1, 2)
-                post = feed_selector + f' > div:nth-child({i})'
-                element = await page.query_selector(post)
-                has_children = await element.query_selector('xpath=child::*')
-                if not has_children:
-                    print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}'")
-                    for _ in range(10):
-                        await page.mouse.wheel(0, 1000)
-                        randomsleep(1, 2)   
-                else:
-                    print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}' has children.")
-                      
-                author_selector = feed_selector \
-                                + f' > div:nth-child({i})' \
-                                + ' > div'*9 \
-                                + ' > div:nth-child(2)' \
-                                + ' > div'*2 \
-                                + ' > div:nth-child(2)' \
-                                + ' > div' \
-                                + ' > div:nth-child(2)' \
-                                + ' > div'*2 \
-                                + ' > span' \
-                                + ' > h3' \
-                                + ' > span'*2 \
-                                + ' > a' \
-                                + ' > strong' \
-                                + ' > span'
-                print(author_selector)
-                # await page.wait_for_load_state('load')  
-                # await page.wait_for_selector(author_selector, timeout = 20000, state = 'hidden')
-                try:
-                    author = await page.locator(author_selector).text_content()
-                except:
-                    author_selector = feed_selector \
-                                + f' > div:nth-child({i})' \
-                                + ' > div'*9 \
-                                + ' > div:nth-child(2)' \
-                                + ' > div'*2 \
-                                + ' > div:nth-child(2)' \
-                                + ' > div' \
-                                + ' > div:nth-child(2)' \
-                                + ' > div'*2 \
-                                + ' > span' \
-                                + ' > h3' \
-                                + ' > span' \
-                                + ' > div'*2 \
-                                + ' > strong' \
-                                + ' > object' \
-                                + ' > div' 
-                    author = await page.locator(author_selector).text_content()
-                print(author)
+            i = 2
+            nb_old_posts = 0
+            while nb_old_posts<15:
+                author, author_data = await get_author(page, i)
+                print(author, author_data)
 
-                
-                new_ligne = [None, None, author, None, None, None]
-                # dataset = dataset.append(pd.Series(new_ligne, index = dataset.columns), ignore_index = True)
+                new_ligne = [None, None, author, author_data, None, None, None]
+                dataset[len(dataset)] = new_ligne
+
+                i += 1
+                nb_old_posts += 1
 
         await browser.close()
 
