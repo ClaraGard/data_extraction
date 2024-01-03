@@ -98,9 +98,43 @@ async def get_author(page, i):
         if text:
             author = text
             break
-    data = author_and_data.replace(author+" ", "", 1)
+    if author == author_and_data:
+        data = ""
+    else:
+        data = author_and_data.replace(author+" ", "", 1)
     print("author: ", author, "\ndata: ", data, "\nboth: ", author_and_data, sep="")
     return author, data
+
+async def get_data(page, i):
+    post = feed_selector + f' > div:nth-child({i})'
+    element = await page.query_selector(post)
+    has_children = await element.query_selector('xpath=child::*')
+    if not has_children:
+        print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}'")
+        for i in range(random.randint(0, 10)):
+            await page.mouse.wheel(0, 500)
+            randomsleep(0.1, 0.5)
+    else:
+        print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}' has children.")
+
+    data_selector = feed_selector \
+                    + f' > div:nth-child({i})' \
+                    + ' > div'*9 \
+                    + ' > div:nth-child(2)' \
+                    + ' > div'*2 \
+                    + ' > div:nth-child(4)' \
+                    + ' > div'*6 
+    
+    reactions_selector = data_selector + ' > div'*2 \
+                    + ' > span' \
+                    + ' > div' \
+                    + ' > span:nth-child(2)' \
+                    + ' > span'*2 \
+                    
+    reactions = await page.locator(reactions_selector).text_content()
+    return reactions
+                    
+    
 
 async def main():
     async with async_playwright() as p:
@@ -150,7 +184,8 @@ async def main():
             while nb_old_posts<15:
                 author, author_data = await get_author(page, i)
                 print(author, author_data)
-
+                reactions = await get_data(page, i)
+                print(reactions)
                 new_ligne = [None, None, author, author_data, None, None, None]
                 dataset[len(dataset)] = new_ligne
 
