@@ -109,24 +109,29 @@ async def main():
             # for _ in range(10):
             #     await page.mouse.wheel(0, 1000)
             #     randomsleep(1, 2)
-            # await page.screenshot(path = "group.png")
+            await page.screenshot(path = "group.png")
             feed_selector = 'div[role = "feed"]'
             nb_of_posts = await page.query_selector(feed_selector)
             nb_of_posts = await nb_of_posts.query_selector_all('xpath=child::*')
             print(len(nb_of_posts))
             for i in range(2, len(nb_of_posts) + 1):
-                element = await page.query_selector(feed_selector + f' > div:nth-child({i})')
-                print(element)
-                # Check if the element has any children
+                for _ in range(10):
+                    await page.mouse.wheel(0, 1000)
+                    randomsleep(1, 2)
+                post = feed_selector + f' > div:nth-child({i})'
+                element = await page.query_selector(post)
                 has_children = await element.query_selector('xpath=child::*')
-                if has_children:
-                    print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}' has children.")
-                else:
+                if not has_children:
                     print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}'")
+                    for _ in range(10):
+                        await page.mouse.wheel(0, 1000)
+                        randomsleep(1, 2)   
+                else:
+                    print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}' has children.")
                       
                 author_selector = feed_selector \
                                 + f' > div:nth-child({i})' \
-                                + ' > div'*8 \
+                                + ' > div'*9 \
                                 + ' > div:nth-child(2)' \
                                 + ' > div'*2 \
                                 + ' > div:nth-child(2)' \
@@ -140,12 +145,33 @@ async def main():
                                 + ' > strong' \
                                 + ' > span'
                 print(author_selector)
-                await page.wait_for_load_state('load')  
-                await page.wait_for_selector(author_selector, timeout = 20000, state = 'hidden')
-                author = await page.locator(author_selector).text_content()
+                # await page.wait_for_load_state('load')  
+                # await page.wait_for_selector(author_selector, timeout = 20000, state = 'hidden')
+                try:
+                    author = await page.locator(author_selector).text_content()
+                except:
+                    author_selector = feed_selector \
+                                + f' > div:nth-child({i})' \
+                                + ' > div'*9 \
+                                + ' > div:nth-child(2)' \
+                                + ' > div'*2 \
+                                + ' > div:nth-child(2)' \
+                                + ' > div' \
+                                + ' > div:nth-child(2)' \
+                                + ' > div'*2 \
+                                + ' > span' \
+                                + ' > h3' \
+                                + ' > span' \
+                                + ' > div'*2 \
+                                + ' > strong' \
+                                + ' > object' \
+                                + ' > div' 
+                    author = await page.locator(author_selector).text_content()
                 print(author)
+
+                
                 new_ligne = [None, None, author, None, None, None]
-                dataset = dataset.append(pd.Series(new_ligne, index = dataset.columns), ignore_index = True)
+                # dataset = dataset.append(pd.Series(new_ligne, index = dataset.columns), ignore_index = True)
 
         await browser.close()
 
