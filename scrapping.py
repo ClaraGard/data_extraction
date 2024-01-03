@@ -70,7 +70,7 @@ async def get_author(page, i):
     has_children = await element.query_selector('xpath=child::*')
     if not has_children:
         print(f"The element with selector '{feed_selector + f' > div:nth-child({i})'}'")
-        for i in range(random.randint(10)):
+        for i in range(random.randint(0, 10)):
             await page.mouse.wheel(0, 500)
             randomsleep(0.1, 0.5)
     else:
