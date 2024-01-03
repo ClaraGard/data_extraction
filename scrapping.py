@@ -145,8 +145,6 @@ async def main():
                 randomsleep(2, 4)
             if await connect(page):
                 randomsleep(2, 4)
-            nb_of_posts = await page.query_selector(feed_selector)
-            nb_of_posts = await nb_of_posts.query_selector_all('xpath=child::*')
             i = 2
             nb_old_posts = 0
             while nb_old_posts<15:
