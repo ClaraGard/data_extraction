@@ -102,8 +102,26 @@ async def main():
                 randomsleep(1, 2)
             await page.screenshot(path = "group.png")
 
-
-
         await browser.close()
 
 asyncio.run(main())
+
+feed_selector = 'div[role = "feed"]'
+nb_of_posts = page.query_selector_all(feed_selector).count()
+for i in range(nb_of_posts):
+    author_selector = feed_selector \
+                      + ' > div'*9 \
+                      + ' > div:nth-child(2)' \
+                      + ' > div'*3 \
+                      + ' > div:nth-child(2)' \
+                      + ' > div' \
+                      + ' > div:nth-child(2)' \
+                      + ' > div'*2 \
+                      + ' > span' \
+                      + ' > h3' \
+                      + ' > span'*2 \
+                      + ' > a' \
+                      + ' > strong' \
+                      + ' > span'
+    author = page.query_selector(author_selector).inner_text()
+
