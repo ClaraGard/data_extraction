@@ -58,96 +58,57 @@ async def get_content(selector, page):
     inner_text = await page.locator(selector).text_content()
 
     # We may need to click on "En voir plus"
-    see_more = False
-    if re.search("oir plus", inner_text[-9:]):
-        see_more = True
-        try:
-            button_selector = selector \
-                               + ' > div'*4 \
-                               + ' > span' \
-                               + ' > div:last-child' \
-                               + ' > div' \
-                               + ' > div[role = "button"]'
-            await page.wait_for_selector(button_selector)
-            await page.click(button_selector)
-            print('yeah')
-        except:
-            button_selector = selector \
-                               + ' > div'*2 \
-                               + ' > span' \
-                               + ' > div:last-child' \
-                               + ' > div' \
-                               + ' > div[role = "button"]'
-            await page.wait_for_selector(button_selector)
-            await page.click(button_selector)
-            print('yeah2')
+    if re.search("oir plus", inner_text[-20:]):
+        button_selector = selector \
+                           + ' > div'*4 \
+                           + ' > span' \
+                           + ' > div:last-child' \
+                           + ' > div' \
+                           + ' > div[role = "button"]'
+        await page.wait_for_selector(button_selector)
+        await page.click(button_selector)
+        print('yeah')
 
-    # We want to include emojis inside the text and count them.
-    if not see_more:
-        print("not see more")
+    # We want to extract the text content of the post (with emojis)
+    # Regular text
+    content_selector = selector \
+                       + ' > div'*4 \
+                       + ' > span' \
+                       + ' > div'*2
+    if await page.query_selector(content_selector) is None:
+        # Smaller text
         content_selector = selector \
-                           + ' > div'*4 \
-                           + ' > span' \
-                           + ' > div'   
-        try:
-            await page.wait_for_selector(content_selector)
-            result = await page.evaluate('''(selector) => {
-                    const element = document.querySelector(selector);
-                    if (!element) return null;
-                    const descendants = element.querySelectorAll('*');
-                    const data = {
-                        textContent: "",
-                        emojis: [],
-                        is_image: false,
-                    };
-                    descendants.forEach((descendant, index) => {
-                        if (index > 0) {
-                            data.textContent += ' '; // Add one space between each descendant, excluding the first
-                        }
-                        if (descendant.tagName === 'IMG' && descendant.hasAttribute('alt')) {
-                            data.textContent += descendant.getAttribute('alt') + ' ';
-                            data.emojis.push(descendant.getAttribute('alt'));
-                        } else {
-                            data.textContent += descendant.textContent.trim();
-                        }
-                    });
-                    return data;
-                }''', content_selector)
-        except:
-            result = None
-    else:
-        print("see more")
-        content_selector = selector \
-                           + ' > div'*4 \
-                           + ' > span' \
-                           + ' > div'*2     
-        try:
-            await page.wait_for_selector(content_selector) 
-            result = await page.evaluate('''(selector) => {
-                    const elements = document.querySelectorAll(selector);
-                    const data = {
-                        textContent: "",
-                        emojis: [],
-                        is_image: false,
-                    };
-                    elements.forEach((element, index) => {
-                        if (index > 0) {
-                            data.textContent += ' '; // Add one space between each element, excluding the first
-                        }
-                        data.textContent += element.textContent.trim();
-                        const spanChild = element.firstElementChild; // Assuming <span> is the only child
-                        if (spanChild && spanChild.tagName === 'SPAN') {
-                            const imgChild = spanChild.firstElementChild;
+                       + ' > div'*4
+    if await page.query_selector(content_selector) is not None:
+        result = await page.evaluate('''(selector) => {
+                const elements = document.querySelectorAll(selector);
+                if (!elements) return null;
+                const data = {
+                    textContent: "",
+                    emojis: [],
+                    links: [],
+                    is_image: false,
+                };
+                elements.forEach(element => {
+                    data.textContent += element.textContent.trim() + ' ';
+                    const children = element.children;
+                    for (const child of children) {
+                        if (child && child.tagName === 'SPAN') {
+                            const imgChild = child.firstElementChild;
                             if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
                                 data.textContent += imgChild.getAttribute('alt') + ' ';
                                 data.emojis.push(imgChild.getAttribute('alt'));
+                            } if (imgChild && imgChild.tagName === 'A' && imgChild.hasAttribute('href')) {
+                                data.links.push(imgChild.getAttribute('href'));
                             }
                         }
-                    });
-                    return data;
-                }''', content_selector)
-        except:
-            result = None
+                    }
+                });
+                return data;
+            }''', content_selector)
+    else:
+        print("no see more")
+        result = None
         
     # Case where the post is a text in an image.
     if not result:
@@ -155,122 +116,114 @@ async def get_content(selector, page):
                            + ' > div'*3 \
                            + ' > div:nth-child(2)' \
                            + ' > div'*2     
-        print("texte à image") 
-        try:
-            await page.wait_for_selector(content_selector)
+        if await page.query_selector(content_selector) is not None:
+            print("texte à image")
             result = await page.evaluate('''(selector) => {
                     const elements = document.querySelectorAll(selector);
+                    if (!elements) return null;
                     const data = {
                         textContent: "",
                         emojis: [],
+                        links: [],
                         is_image: true,
                     };
-                    elements.forEach((element, index) => {
-                        if (index > 0) {
-                            data.textContent += ' '; // Add one space between each element, excluding the first
-                        }
-                        data.textContent += element.textContent.trim();
-                        const spanChild = element.firstElementChild; // Assuming <span> is the only child
-                        if (spanChild && spanChild.tagName === 'SPAN') {
-                            const imgChild = spanChild.firstElementChild;
-                            if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
-                                data.textContent += imgChild.getAttribute('alt') + ' ';
-                                data.emojis.push(imgChild.getAttribute('alt'));
+                    elements.forEach(element => {
+                        data.textContent += element.textContent.trim() + ' ';
+                        const children = element.children;
+                        for (const child of children) {
+                            if (child && child.tagName === 'SPAN') {
+                                const imgChild = child.firstElementChild;
+                                if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
+                                    data.textContent += imgChild.getAttribute('alt') + ' ';
+                                    data.emojis.push(imgChild.getAttribute('alt'));
+                                }
                             }
                         }
                     });
                     return data;
                 }''', content_selector)
-        except:
-            result = None
-        
-    # if not result:
-    #     content_selector = selector \
-    #                        + ' > div'*3 \
-    #                        + ' > div:nth-child(2)' \
-    #                        + ' > div'*2     
-    #     print("texte à image") 
-    #     result = await page.evaluate('''(selector) => {
-    #             const elements = document.querySelectorAll(selector);
-    #             const data = {
-    #                 textContent: "",
-    #                 emojis: [],
-    #                 is_image: true,
-    #             };
-    #             elements.forEach((element, index) => {
-    #                 if (index > 0) {
-    #                     data.textContent += ' '; // Add one space between each element, excluding the first
-    #                 }
-    #                 data.textContent += element.textContent.trim();
-    #                 const spanChild = element.firstElementChild; // Assuming <span> is the only child
-    #                 if (spanChild && spanChild.tagName === 'SPAN') {
-    #                     const imgChild = spanChild.firstElementChild;
-    #                     if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
-    #                         data.textContent += imgChild.getAttribute('alt') + ' ';
-    #                         data.emojis.push(imgChild.getAttribute('alt'));
-    #                     }
-    #                 }
-    #             });
-    #             return data;
-    #         }''', content_selector)
-
-    final_text = result['textContent']
+        else:
+            print("no images here")
+            result = {'textContent': "", 'emojis': [], 'links': [], 'is_image': False}
 
     # We want to include images inside the text.
-    try:
+    if result['textContent'] == "":
+        which_div = ' > div'
+    else:
+        which_div = ' > div:nth-child(2)'
+    # one image
+    images_selector = selector \
+                          + which_div \
+                          + ' > div' \
+                          + ' > a' \
+                          + ' > div'*4 \
+                          + ' > img'
+    root = await page.query_selector(images_selector)
+    if root is not None:
+        print('one image')
+        images = {'img': []}
+        attribute_value = await root.get_attribute('src')
+        images['img'].append(attribute_value)
+        for image in images['img']:
+            result['textContent'] += ' ' + image
+    else:
+        # several images
         images_selector = selector \
-                          + ' > div:nth-child(2)' \
+                          + which_div \
                           + ' > div'*5 \
                           + ' > a' \
                           + ' > div'*3
-        images = await page.evaluate('''(selector) => {
-                const element = document.querySelector(selector);
-                if (!element) return null;
-                const descendants = element.querySelectorAll('*');
-                const data = {
-                    img: [],
-                };
-                descendants.forEach((descendant, index) => {
-                    if (descendant.tagName === 'IMG' && descendant.hasAttribute('src') && descendant.getAttribute('src') !== "") {
-                        data.img.push(descendant.getAttribute('src'));
-                    }
-                });
-                return data;
-            }''', images_selector)
-        
-        for image in images['img']:
-            final_text += ' ' + image
-    except:
-        try:
+        root = await page.query_selector(images_selector)
+        if root is not None:
+            print('several images')
             images_selector = selector \
-                              + ' > div:nth-child(2)' \
-                              + ' > div' \
-                              + ' > a' \
-                              + ' > div'*4
-            images = await page.evaluate('''(selector) => {
-                    const element = document.querySelector(selector);
-                    if (!element) return null;
-                    const descendants = element.querySelectorAll('*');
-                    const data = {
-                        img: [],
-                    };
-                    descendants.forEach((descendant, index) => {
-                        if (descendant.tagName === 'IMG' && descendant.hasAttribute('src') && descendant.getAttribute('src') !== "") {
-                            data.img.push(descendant.getAttribute('src'));
-                        }
-                    });
-                    return data;
-                }''', images_selector)
-
-            for image in images['img']:
-                final_text += ' ' + image
-        except:
+                          + which_div \
+                          + ' > div'*4
+            root = await page.query_selector(images_selector)
+            descendants = await root.query_selector_all('xpath=child::*')
             images = {'img': []}
-    
-    print("yyyyyyyyyyyyyyyy", final_text)
-    print(result['emojis'], images['img'], '\n\n')
+            for descendant in descendants:
+                aChild = await descendant.query_selector_all('xpath=child::*')
+                divChild = await aChild[0].query_selector_all('xpath=child::*')
+                divChild2 = await divChild[0].query_selector_all('xpath=child::*')
+                divChild3 = await divChild2[0].query_selector_all('xpath=child::*')
+                imgChild = await divChild3[0].query_selector_all('xpath=child::*')
+                attribute_value = await imgChild[0].get_attribute('src')
+                images['img'].append(attribute_value)
+            for image in images['img']:
+                result['textContent'] += ' ' + image
+        else:
+            images = {'img': []}
 
-    return final_text
+    # link_to_other_post_selector = selector \
+    #                       + which_div \
+    #                       + ' > div'
+    # if await page.query_selector(link_to_other_post_selector) is not None:
+    #     other_post = await page.evaluate('''(selector) => {
+    #             const element = document.querySelector(selector);
+    #             if (!element) return null;
+    #             const descendants = element.querySelectorAll('*');
+    #             const data = {
+    #                 citations: [],
+    #             };
+    #             descendants.forEach(descendant => {
+    #                 if (descendant.tagName === 'A' && descendant.hasAttribute('href') && descendant.hasAttribute('waprocessedanchor') == true) {
+    #                     data.citations.push(descendant.getAttribute('href'));
+    #                 } 
+    #             });
+    #             return data;
+    #         }''', link_to_other_post_selector)
+    #     print("other post done !!!")
+    #     for cite in other_post['citations']:
+    #         result['textContent'] += ' ' + cite
+    #         result['cite_other_post'] = True
+    # else:
+    #     result['cite_other_post'] = False
+    
+    print("yyyyyyyyyyyyyyyy", result['textContent'] )
+    print(result['emojis'], images['img'], result['links'], '\n\n')
+
+    return result['textContent'] 
 
 async def main():
     async with async_playwright() as p:
@@ -324,7 +277,7 @@ async def main():
             nb_of_posts = await page.query_selector(feed_selector)
             nb_of_posts = await nb_of_posts.query_selector_all('xpath=child::*')
             print(len(nb_of_posts))
-            for i in range(2, 20):
+            for i in range(2, 50):
             # for i in range(2, len(nb_of_posts) + 1):
                 post = feed_selector + f' > div:nth-child({i})'
                 element = await page.query_selector(post)
