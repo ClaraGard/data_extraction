@@ -61,74 +61,161 @@ async def get_content(selector, page):
     see_more = False
     if re.search("oir plus", inner_text[-9:]):
         see_more = True
-        button_selector = selector \
-                           + ' > div'*4 \
-                           + ' > span' \
-                           + ' > div:last-child' \
-                           + ' > div' \
-                           + ' > div[role = "button"]'
-        await page.click(button_selector)
-        print('yeah')
+        try:
+            button_selector = selector \
+                               + ' > div'*4 \
+                               + ' > span' \
+                               + ' > div:last-child' \
+                               + ' > div' \
+                               + ' > div[role = "button"]'
+            await page.wait_for_selector(button_selector)
+            await page.click(button_selector)
+            print('yeah')
+        except:
+            button_selector = selector \
+                               + ' > div'*2 \
+                               + ' > span' \
+                               + ' > div:last-child' \
+                               + ' > div' \
+                               + ' > div[role = "button"]'
+            await page.wait_for_selector(button_selector)
+            await page.click(button_selector)
+            print('yeah2')
 
-    # We want to include emojis inside the text and count them. 
+    # We want to include emojis inside the text and count them.
     if not see_more:
         print("not see more")
         content_selector = selector \
                            + ' > div'*4 \
                            + ' > span' \
                            + ' > div'   
-        await page.wait_for_selector(content_selector)  
-        result = await page.evaluate('''(selector) => {
-                const element = document.querySelector(selector);
-                if (!element) return null;
-                const descendants = element.querySelectorAll('*');
-                const data = {
-                    textContent: "",
-                    emojis: [],
-                };
-                descendants.forEach((descendant, index) => {
-                    if (index > 0) {
-                        data.textContent += ' '; // Add one space between each descendant, excluding the first
-                    }
-                    if (descendant.tagName === 'IMG' && descendant.hasAttribute('alt')) {
-                        data.textContent += descendant.getAttribute('alt') + ' ';
-                        data.emojis.push(descendant.getAttribute('alt'));
-                    } else {
-                        data.textContent += descendant.textContent.trim();
-                    }
-                });
-                return data;
-            }''', content_selector)
+        try:
+            await page.wait_for_selector(content_selector)
+            result = await page.evaluate('''(selector) => {
+                    const element = document.querySelector(selector);
+                    if (!element) return null;
+                    const descendants = element.querySelectorAll('*');
+                    const data = {
+                        textContent: "",
+                        emojis: [],
+                        is_image: false,
+                    };
+                    descendants.forEach((descendant, index) => {
+                        if (index > 0) {
+                            data.textContent += ' '; // Add one space between each descendant, excluding the first
+                        }
+                        if (descendant.tagName === 'IMG' && descendant.hasAttribute('alt')) {
+                            data.textContent += descendant.getAttribute('alt') + ' ';
+                            data.emojis.push(descendant.getAttribute('alt'));
+                        } else {
+                            data.textContent += descendant.textContent.trim();
+                        }
+                    });
+                    return data;
+                }''', content_selector)
+        except:
+            result = None
     else:
+        print("see more")
         content_selector = selector \
                            + ' > div'*4 \
                            + ' > span' \
                            + ' > div'*2     
-        await page.wait_for_selector(content_selector) 
-        print("see more") 
-        result = await page.evaluate('''(selector) => {
-                const elements = document.querySelectorAll(selector);
-                const data = {
-                    textContent: "",
-                    emojis: [],
-                };
-                elements.forEach((element, index) => {
-                    if (index > 0) {
-                        data.textContent += ' '; // Add one space between each element, excluding the first
-                    }
-                    data.textContent += element.textContent.trim();
-                    const spanChild = element.firstElementChild; // Assuming <span> is the only child
-                    if (spanChild && spanChild.tagName === 'SPAN') {
-                        const imgChild = spanChild.firstElementChild;
-                        if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
-                            data.textContent += imgChild.getAttribute('alt') + ' ';
-                            data.emojis.push(imgChild.getAttribute('alt'));
+        try:
+            await page.wait_for_selector(content_selector) 
+            result = await page.evaluate('''(selector) => {
+                    const elements = document.querySelectorAll(selector);
+                    const data = {
+                        textContent: "",
+                        emojis: [],
+                        is_image: false,
+                    };
+                    elements.forEach((element, index) => {
+                        if (index > 0) {
+                            data.textContent += ' '; // Add one space between each element, excluding the first
                         }
-                    }
-                });
-                return data;
-            }''', content_selector)
+                        data.textContent += element.textContent.trim();
+                        const spanChild = element.firstElementChild; // Assuming <span> is the only child
+                        if (spanChild && spanChild.tagName === 'SPAN') {
+                            const imgChild = spanChild.firstElementChild;
+                            if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
+                                data.textContent += imgChild.getAttribute('alt') + ' ';
+                                data.emojis.push(imgChild.getAttribute('alt'));
+                            }
+                        }
+                    });
+                    return data;
+                }''', content_selector)
+        except:
+            result = None
+        
+    # Case where the post is a text in an image.
+    if not result:
+        content_selector = selector \
+                           + ' > div'*3 \
+                           + ' > div:nth-child(2)' \
+                           + ' > div'*2     
+        print("texte à image") 
+        try:
+            await page.wait_for_selector(content_selector)
+            result = await page.evaluate('''(selector) => {
+                    const elements = document.querySelectorAll(selector);
+                    const data = {
+                        textContent: "",
+                        emojis: [],
+                        is_image: true,
+                    };
+                    elements.forEach((element, index) => {
+                        if (index > 0) {
+                            data.textContent += ' '; // Add one space between each element, excluding the first
+                        }
+                        data.textContent += element.textContent.trim();
+                        const spanChild = element.firstElementChild; // Assuming <span> is the only child
+                        if (spanChild && spanChild.tagName === 'SPAN') {
+                            const imgChild = spanChild.firstElementChild;
+                            if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
+                                data.textContent += imgChild.getAttribute('alt') + ' ';
+                                data.emojis.push(imgChild.getAttribute('alt'));
+                            }
+                        }
+                    });
+                    return data;
+                }''', content_selector)
+        except:
+            result = None
+        
+    # if not result:
+    #     content_selector = selector \
+    #                        + ' > div'*3 \
+    #                        + ' > div:nth-child(2)' \
+    #                        + ' > div'*2     
+    #     print("texte à image") 
+    #     result = await page.evaluate('''(selector) => {
+    #             const elements = document.querySelectorAll(selector);
+    #             const data = {
+    #                 textContent: "",
+    #                 emojis: [],
+    #                 is_image: true,
+    #             };
+    #             elements.forEach((element, index) => {
+    #                 if (index > 0) {
+    #                     data.textContent += ' '; // Add one space between each element, excluding the first
+    #                 }
+    #                 data.textContent += element.textContent.trim();
+    #                 const spanChild = element.firstElementChild; // Assuming <span> is the only child
+    #                 if (spanChild && spanChild.tagName === 'SPAN') {
+    #                     const imgChild = spanChild.firstElementChild;
+    #                     if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
+    #                         data.textContent += imgChild.getAttribute('alt') + ' ';
+    #                         data.emojis.push(imgChild.getAttribute('alt'));
+    #                     }
+    #                 }
+    #             });
+    #             return data;
+    #         }''', content_selector)
+
     final_text = result['textContent']
+
     # We want to include images inside the text.
     try:
         images_selector = selector \
@@ -154,7 +241,31 @@ async def get_content(selector, page):
         for image in images['img']:
             final_text += ' ' + image
     except:
-        images = {'img': []}
+        try:
+            images_selector = selector \
+                              + ' > div:nth-child(2)' \
+                              + ' > div' \
+                              + ' > a' \
+                              + ' > div'*4
+            images = await page.evaluate('''(selector) => {
+                    const element = document.querySelector(selector);
+                    if (!element) return null;
+                    const descendants = element.querySelectorAll('*');
+                    const data = {
+                        img: [],
+                    };
+                    descendants.forEach((descendant, index) => {
+                        if (descendant.tagName === 'IMG' && descendant.hasAttribute('src') && descendant.getAttribute('src') !== "") {
+                            data.img.push(descendant.getAttribute('src'));
+                        }
+                    });
+                    return data;
+                }''', images_selector)
+
+            for image in images['img']:
+                final_text += ' ' + image
+        except:
+            images = {'img': []}
     
     print("yyyyyyyyyyyyyyyy", final_text)
     print(result['emojis'], images['img'], '\n\n')
@@ -213,7 +324,7 @@ async def main():
             nb_of_posts = await page.query_selector(feed_selector)
             nb_of_posts = await nb_of_posts.query_selector_all('xpath=child::*')
             print(len(nb_of_posts))
-            for i in range(2, 12):
+            for i in range(2, 20):
             # for i in range(2, len(nb_of_posts) + 1):
                 post = feed_selector + f' > div:nth-child({i})'
                 element = await page.query_selector(post)
