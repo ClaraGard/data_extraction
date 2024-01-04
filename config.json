@@ -1,0 +1,31 @@
+{
+    "timings": {
+        "time to load page": 4, 
+        "timeout": 10
+    },
+
+    "account": {
+        "email": "dataextracproject2@gmail.com",
+        "password": "DauphineIASD2!"
+    },
+
+    "date": {
+        "years": "a",
+        "months": "m",
+        "weeks": "sem",
+        "days": "j",
+        "hours": "h",
+        "minutes": "min",
+        "months of the year": ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    },
+
+    "multipliers": {
+        "thousands": "K",
+        "millions": "M",
+        "billions": "B"
+    },
+    
+    "misc": {
+        "see more": "voir plus"
+    }
+}
