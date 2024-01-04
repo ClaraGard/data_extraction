@@ -95,7 +95,7 @@ async def is_short_video(page, i):
                 + ' > div'*3 \
                 + ' > a' \
                 + ' > div'*2
-    print(short_video_selector)
+    
     element = await page.query_selector(short_video_selector)
     if element is None:
         return False
@@ -311,7 +311,7 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless = False)
         page = await browser.new_page()
-        page.set_default_timeout(10*1000)
+        page.set_default_timeout(10*3600*1000)
 
         await page.goto("https://www.facebook.com")
         await royal_connect(page)
