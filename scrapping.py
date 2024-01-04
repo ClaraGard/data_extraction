@@ -320,7 +320,7 @@ async def main():
         for group in groups:
             await page.goto(group)
             randomsleep(config.timings.time_to_load, config.timings.time_to_load+2)
-            print("\n\n---------------\n")
+            print("\n---------------\n")
             print(group)
 
             await royal_connect(page)
