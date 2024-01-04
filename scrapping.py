@@ -206,6 +206,7 @@ async def get_date(page, i):
         date -= timedelta(minutes=numbers[0])
     else:
         raise Exception("Date format unrecognized "+date_string)
+    date = date.replace(second=0, microsecond=0)
     return date
 
 async def get_data(page, i):
@@ -227,20 +228,20 @@ async def get_data(page, i):
                     + ' > span:nth-child(2)' \
                     + ' > span'*2 
                     
-    if await page.query_selector(reactions_selector) is not None:      
+    if await page.query_selector(reactions_selector) is not None:
         reactions = await page.locator(reactions_selector).text_content()
-        if reactions[-1] == config.multipliers.thousands:
+        reactions = reactions.split()
+        if len(reactions) == 1:
+            m = 1
+        elif reactions[1] == config.multipliers.thousands:
             m = 1000
-        elif reactions[-1] == config.multipliers.millions:
+        elif reactions[1] == config.multipliers.millions:
             m = 1000000
-        elif reactions[-1] == config.multipliers.billions:
+        elif reactions[1] == config.multipliers.billions:
             m = 1000000000
         else:
             m = 1
-        if m != 1:
-            reactions = int(float(re.search(r"([0-9]*[?:.|,])?[0-9]+", reactions).group().replace(",","."))*m)
-        else:
-            reactions = int(reactions)
+        reactions = int(float(reactions[0].replace(",","."))*m)
     else:
         reactions = 0
     
@@ -252,18 +253,18 @@ async def get_data(page, i):
     
     if await page.query_selector(comments_selector) is not None:   
         comments = await page.locator(comments_selector).text_content()
-        if comments[-1] == config.multipliers.thousands:
+        comments = comments.split()
+        if len(comments) == 1:
+            m = 1
+        elif comments[1] == config.multipliers.thousands:
             m = 1000
-        elif comments[-1] == config.multipliers.millions:
+        elif comments[1] == config.multipliers.millions:
             m = 1000000
-        elif comments[-1] == config.multipliers.billions:
+        elif comments[1] == config.multipliers.billions:
             m = 1000000000
         else:
             m = 1
-        if m != 1:
-            comments = int(float(re.search(r"([0-9]*[?:.|,])?[0-9]+", comments).group().replace(",","."))*m)
-        else:
-            comments = int(re.search(r'\d+', comments).group())    
+        comments = int(float(comments[0].replace(",","."))*m)
     else:
         comments = 0
 
@@ -275,18 +276,18 @@ async def get_data(page, i):
     
     if await page.query_selector(shares_selector) is not None:   
         shares = await page.locator(shares_selector).text_content()
-        if shares[-1] == config.multipliers.thousands:
+        shares = shares.split()
+        if len(shares) == 1:
+            m = 1
+        elif shares[1] == config.multipliers.thousands:
             m = 1000
-        elif shares[-1] == config.multipliers.millions:
+        elif shares[1] == config.multipliers.millions:
             m = 1000000
-        elif shares[-1] == config.multipliers.billions:
+        elif shares[1] == config.multipliers.billions:
             m = 1000000000
         else:
             m = 1
-        if m != 1:
-            shares = int(float(re.search(r"([0-9]*[?:.|,])?[0-9]+", shares).group().replace(",","."))*m)
-        else:
-            shares = int(re.search(r'\d+', shares).group())    
+        shares = int(float(shares[0].replace(",","."))*m)
     else:
         shares = 0
 
@@ -307,7 +308,7 @@ async def main():
                    'link']
     dataset = pd.DataFrame(columns = columns)
 
-
+    start = datetime.now()
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless = False)
         page = await browser.new_page()
@@ -351,6 +352,8 @@ async def main():
                 print("")
         await browser.close()
         dataset.to_csv("dataset.csv")
+        end = datetime.now()
+        print(str(end-start))
 
 asyncio.run(main())
 
