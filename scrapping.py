@@ -330,6 +330,7 @@ async def main():
             nb_old_posts = 0
             while nb_old_posts<20:
                 i += 1
+                print("post:", i-1, " |  consecutive old posts:", nb_old_posts)
                 if await is_short_video(page, i):
                     print("short video")
                     continue
