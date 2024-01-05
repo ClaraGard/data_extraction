@@ -1,1 +1,3 @@
-print(["#Error couldn't scrappe: "]*2)
+e = Exception("Error")
+f = " eee"
+print(str(e)+f)

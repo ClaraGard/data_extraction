@@ -322,8 +322,6 @@ async def get_content(page, i):
                                    + ' > div'*2 \
                                    + ' > div:nth-child(3)'
 
-    inner_text = await page.locator(selector).text_content()
-
     # We may need to click on "En voir plus"
     button_selector = selector \
                     + ' > div'*4 \
@@ -513,26 +511,26 @@ async def scrappe(page, i, group):
     try:
         author = await author_task
     except Exception as e:
-        author = ["#Error couldn't scrappe: " + e]*2
+        author = ["#Error couldn't scrappe: " + str(e)]*2
     print("author:", author)
 
 
     try:
         reactions = await reactions_task
     except Exception as e:
-        reactions = "#Error couldn't scrappe: " + e
+        reactions = "#Error couldn't scrappe: " + str(e)
     print("reactions:", reactions)
 
     try:
         comments = await comments_task
     except Exception as e:
-        comments = "#Error couldn't scrappe: " + e
+        comments = "#Error couldn't scrappe: " + str(e)
     print("comments:", comments)
 
     try:
         shares = await shares_task
     except Exception as e:
-        shares = "#Error couldn't scrappe: " + e
+        shares = "#Error couldn't scrappe: " + str(e)
     print("shares:", shares)
 
 
@@ -546,14 +544,14 @@ async def scrappe(page, i, group):
     try:
         link = await link_task
     except Exception as e:
-        link = "#Error couldn't scrappe: " + e
+        link = "#Error couldn't scrappe: " + str(e)
     print(link)
 
 
     try:
         content_links_images = await content_task
     except Exception as e:
-        content_links_images = ["#Error couldn't scrappe: " + e]*3
+        content_links_images = ["#Error couldn't scrappe: " + str(e)]*3
     print("content:",content_links_images[0])
     print("links:", content_links_images[1])
     print("images:", content_links_images[2])
