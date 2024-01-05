@@ -13,7 +13,7 @@ account = Config.Account(config_json["account"]["email"], config_json["account"]
 date = Config.Date(config_json["date"]["years"], config_json["date"]["months"], config_json["date"]["weeks"], config_json["date"]["days"], config_json["date"]["hours"], config_json["date"]["minutes"], config_json["date"]["months of the year"])
 multipliers = Config.Multipliers(config_json["multipliers"]["thousands"], config_json["multipliers"]["millions"], config_json["multipliers"]["millions"])
 timings = Config.Timings(config_json["timings"]["time to load page"], config_json["multipliers"]["timeout"])
-misc = Config.Misc(config_json["misc"]["see more"])
+misc = Config.Misc(config_json["misc"]["see more"], config_json["misc"]["know more"])
 config = Config(account, date, multipliers, timings, misc)
 
 def is_old(date):
@@ -32,7 +32,15 @@ async def randomscroll(page, min, max):
 async def scroll_if_needed(element, page):
     has_children = await element.query_selector('xpath=child::*')
     if not has_children:
-        await randomscroll(page, 6, 12)
+        await randomscroll(page, 5, 10)
+        randomsleep(1.5, 3)
+
+async def scroll_into_view(page, i):
+    print("scrolling...")
+    post = feed_selector + f' > div:nth-child({i})'
+    element = await page.query_selector(post)
+    await element.evaluate("element => element.scrollIntoViewIfNeeded()")
+    randomsleep(0.5, 1.5)
 
 async def cookies(page):
     print("cookies")
@@ -84,7 +92,6 @@ async def royal_connect(page):
 async def is_short_video(page, i):
     post = feed_selector + f' > div:nth-child({i})'
     element = await page.query_selector(post)
-    await scroll_if_needed(element, page)
     
     short_video_selector = feed_selector \
                 + f' > div:nth-child({i})' \
@@ -105,7 +112,6 @@ async def is_short_video(page, i):
 async def get_author(page, i):
     post = feed_selector + f' > div:nth-child({i})'
     element = await page.query_selector(post)
-    await scroll_if_needed(element, page)
 
     author_and_data_selector = feed_selector \
                     + f' > div:nth-child({i})' \
@@ -138,7 +144,6 @@ async def get_author(page, i):
 async def get_link(page, i):
     post = feed_selector + f' > div:nth-child({i})'
     element = await page.query_selector(post)
-    await scroll_if_needed(element, page)
 
     link_selector = feed_selector \
                     + f' > div:nth-child({i})' \
@@ -164,7 +169,6 @@ async def get_link(page, i):
 async def get_date(page, i):
     post = feed_selector + f' > div:nth-child({i})'
     element = await page.query_selector(post)
-    await scroll_if_needed(element, page)
 
     date_selector = feed_selector \
                     + f' > div:nth-child({i})' \
@@ -212,7 +216,6 @@ async def get_date(page, i):
 async def get_data(page, i):
     post = feed_selector + f' > div:nth-child({i})'
     element = await page.query_selector(post)
-    await scroll_if_needed(element, page)
 
     data_selector = feed_selector \
                     + f' > div:nth-child({i})' \
@@ -292,26 +295,207 @@ async def get_data(page, i):
         shares = 0
 
     return reactions, comments, shares
+
+async def get_content(page, i):
+    selector = feed_selector \
+                                   + f' > div:nth-child({i})' \
+                                   + ' > div'*9 \
+                                   + ' > div:nth-child(2)' \
+                                   + ' > div'*2 \
+                                   + ' > div:nth-child(3)'
+    element = await page.query_selector(selector)
+
+    inner_text = await page.locator(selector).text_content()
+
+    # We may need to click on "En voir plus"
+    if re.search(config.misc.see_more, inner_text[-20:], re.IGNORECASE) and re.search(config.misc.know_more, inner_text[-20:], re.IGNORECASE) is None:
+        button_selector = selector \
+                           + ' > div'*4 \
+                           + ' > span' \
+                           + ' > div:last-child' \
+                           + ' > div' \
+                           + ' > div[role = "button"]'
+        await page.wait_for_selector(button_selector)
+        await page.click(button_selector)
+        #print('yeah')
+
+    # We want to extract the text content of the post (with emojis)
+    # Regular text
+    content_selector = selector \
+                       + ' > div'*4 \
+                       + ' > span' \
+                       + ' > div'*2
+    if await page.query_selector(content_selector) is None:
+        # Smaller text
+        content_selector = selector \
+                       + ' > div'*4
+    if await page.query_selector(content_selector) is not None:
+        result = await page.evaluate('''(selector) => {
+                const elements = document.querySelectorAll(selector);
+                if (!elements) return null;
+                const data = {
+                    textContent: "",
+                    emojis: [],
+                    links: [],
+                    is_image: false,
+                };
+                elements.forEach(element => {
+                    data.textContent += element.textContent.trim() + ' ';
+                    const children = element.children;
+                    for (const child of children) {
+                        if (child && child.tagName === 'SPAN') {
+                            const imgChild = child.firstElementChild;
+                            if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
+                                data.textContent += imgChild.getAttribute('alt') + ' ';
+                                data.emojis.push(imgChild.getAttribute('alt'));
+                            } if (imgChild && imgChild.tagName === 'A' && imgChild.hasAttribute('href')) {
+                                data.links.push(imgChild.getAttribute('href'));
+                            }
+                        }
+                    }
+                });
+                return data;
+            }''', content_selector)
+    else:
+        #print("no see more")
+        result = None
+        
+    # Case where the post is a text in an image.
+    if not result:
+        content_selector = selector \
+                           + ' > div'*3 \
+                           + ' > div:nth-child(2)' \
+                           + ' > div'*2     
+        if await page.query_selector(content_selector) is not None:
+            #print("texte à image")
+            result = await page.evaluate('''(selector) => {
+                    const elements = document.querySelectorAll(selector);
+                    if (!elements) return null;
+                    const data = {
+                        textContent: "",
+                        emojis: [],
+                        links: [],
+                        is_image: true,
+                    };
+                    elements.forEach(element => {
+                        data.textContent += element.textContent.trim() + ' ';
+                        const children = element.children;
+                        for (const child of children) {
+                            if (child && child.tagName === 'SPAN') {
+                                const imgChild = child.firstElementChild;
+                                if (imgChild && imgChild.tagName === 'IMG' && imgChild.hasAttribute('alt')) {
+                                    data.textContent += imgChild.getAttribute('alt') + ' ';
+                                    data.emojis.push(imgChild.getAttribute('alt'));
+                                }
+                            }
+                        }
+                    });
+                    return data;
+                }''', content_selector)
+        else:
+            #print("no images here")
+            result = {'textContent': "", 'emojis': [], 'links': [], 'is_image': False}
+
+    # We want to include images inside the text.
+    if result['textContent'] == "":
+        which_div = ' > div'
+    else:
+        which_div = ' > div:nth-child(2)'
+    # one image
+    images_selector = selector \
+                          + which_div \
+                          + ' > div' \
+                          + ' > a' \
+                          + ' > div'*4 \
+                          + ' > img'
+    root = await page.query_selector(images_selector)
+    if root is not None:
+        #print('one image')
+        images = {'img': []}
+        attribute_value = await root.get_attribute('src')
+        images['img'].append(attribute_value)
+        for image in images['img']:
+            result['textContent'] += ' ' + image
+    else:
+        # several images
+        images_selector = selector \
+                          + which_div \
+                          + ' > div'*5 \
+                          + ' > a' \
+                          + ' > div'*3
+        root = await page.query_selector(images_selector)
+        if root is not None:
+            #print('several images')
+            images_selector = selector \
+                          + which_div \
+                          + ' > div'*4
+            root = await page.query_selector(images_selector)
+            descendants = await root.query_selector_all('xpath=child::*')
+            images = {'img': []}
+            for descendant in descendants:
+                aChild = await descendant.query_selector_all('xpath=child::*')
+                divChild = await aChild[0].query_selector_all('xpath=child::*')
+                divChild2 = await divChild[0].query_selector_all('xpath=child::*')
+                divChild3 = await divChild2[0].query_selector_all('xpath=child::*')
+                imgChild = await divChild3[0].query_selector_all('xpath=child::*')
+                attribute_value = await imgChild[0].get_attribute('src')
+                images['img'].append(attribute_value)
+        else:
+            images = {'img': []}
+
+    # link_to_other_post_selector = selector \
+    #                       + which_div \
+    #                       + ' > div'
+    # if await page.query_selector(link_to_other_post_selector) is not None:
+    #     other_post = await page.evaluate('''(selector) => {
+    #             const element = document.querySelector(selector);
+    #             if (!element) return null;
+    #             const descendants = element.querySelectorAll('*');
+    #             const data = {
+    #                 citations: [],
+    #             };
+    #             descendants.forEach(descendant => {
+    #                 if (descendant.tagName === 'A' && descendant.hasAttribute('href') && descendant.hasAttribute('waprocessedanchor') == true) {
+    #                     data.citations.push(descendant.getAttribute('href'));
+    #                 } 
+    #             });
+    #             return data;
+    #         }''', link_to_other_post_selector)
+    #     print("other post done !!!")
+    #     for cite in other_post['citations']:
+    #         result['textContent'] += ' ' + cite
+    #         result['cite_other_post'] = True
+    # else:
+    #     result['cite_other_post'] = False
+    
+    #print("yyyyyyyyyyyyyyyy", result['textContent'] )
+    #print(result['emojis'], images['img'], result['links'], '\n\n')
+    return result['textContent'], result['links'], images['img']
                     
     
 
 async def main():
     groups = pd.read_json('groups.json')['groups_names'].unique()
     columns = ['date',
-                   'text',
-                   'author',
-                   'authordata',
-                   'nbcomments',
-                   'nbshares',
-                   'nbreacts',
-                   'group',
-                   'link']
+               'text',
+               'author',
+               'authordata',
+               'nbcomments',
+               'nbshares',
+               'nbreacts',
+               'images',
+               'links',
+               'group',
+               'link']
     dataset = pd.DataFrame(columns = columns)
 
     start = datetime.now()
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless = False)
         page = await browser.new_page()
+        await page.evaluate('''() => {return document.documentElement.requestFullscreen();}''')
+        await page.set_viewport_size({'width': 1920, 'height': 1080})
+
         page.set_default_timeout(10*3600*1000)
 
         await page.goto("https://www.facebook.com")
@@ -332,11 +516,13 @@ async def main():
             while nb_old_posts<20:
                 i += 1
                 print("post:", i-1, " |  consecutive old posts:", nb_old_posts)
+                await scroll_into_view(page, i)
+
                 if await is_short_video(page, i):
                     print("short video")
                     continue
                 author, author_data = await get_author(page, i)
-                print(author, author_data)
+                print("author:", author, author_data)
                 reactions, comments, shares = await get_data(page, i)
                 print("reactions:", reactions, "comments:", comments, "shares:", shares)
                 date = await get_date(page, i)
@@ -347,7 +533,11 @@ async def main():
                 print("approximated date:", date.strftime("%Y-%m-%d %H:%M:%S"))
                 link = await get_link(page, i)
                 print(link)
-                new_ligne = [date, None, author, author_data, comments, shares, reactions, group, link]
+                content, links, images = await get_content(page, i)
+                print("content:",content)
+                print("links:", links)
+                print("images:", images)
+                new_ligne = [date, content, author, author_data, comments, shares, reactions, images, links, group, link]
                 dataset.loc[len(dataset)] = new_ligne
                 print("")
         await browser.close()

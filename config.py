@@ -33,5 +33,6 @@ class Config:
             self.timeout = timeout
     
     class Misc:
-        def __init__(self, see_more):
+        def __init__(self, see_more, know_more):
             self.see_more = see_more
+            self.know_more = know_more
