@@ -41,6 +41,7 @@ async def scroll_into_view(page, i):
     element = await page.query_selector(post)
     await element.evaluate("element => element.scrollIntoViewIfNeeded()")
     randomsleep(0.5, 1.5)
+    print("done scrolling")
 
 async def cookies(page):
     print("cookies")
@@ -324,16 +325,19 @@ async def get_content(page, i):
     inner_text = await page.locator(selector).text_content()
 
     # We may need to click on "En voir plus"
-    if re.search(config.misc.see_more, inner_text[-20:], re.IGNORECASE) and re.search(config.misc.know_more, inner_text[-20:], re.IGNORECASE) is None:
-        button_selector = selector \
-                           + ' > div'*4 \
-                           + ' > span' \
-                           + ' > div:last-child' \
-                           + ' > div' \
-                           + ' > div[role = "button"]'
-        await page.wait_for_selector(button_selector)
-        await page.click(button_selector)
-        #print('yeah')
+    button_selector = selector \
+                    + ' > div'*4 \
+                    + ' > span' \
+                    + ' > div:last-child' \
+                    + ' > div' \
+                    + ' > div[role = "button"]'
+    button_element = await page.query_selector(button_selector)
+    if button_selector is not None:
+        button_text = await button_element.text_content()
+        if re.search(config.misc.see_more, button_text, re.IGNORECASE) and re.search(config.misc.know_more, button_text, re.IGNORECASE) is None:
+            await page.wait_for_selector(button_selector)
+            await page.click(button_selector)
+            #print('yeah')
 
     # We want to extract the text content of the post (with emojis)
     # Regular text
