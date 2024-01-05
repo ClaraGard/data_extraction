@@ -213,10 +213,8 @@ async def get_date(page, i):
     date = date.replace(second=0, microsecond=0)
     return date
 
-async def get_data(page, i):
-    post = feed_selector + f' > div:nth-child({i})'
-    element = await page.query_selector(post)
 
+async def get_reactions(page, i):
     data_selector = feed_selector \
                     + f' > div:nth-child({i})' \
                     + ' > div'*9 \
@@ -247,6 +245,16 @@ async def get_data(page, i):
         reactions = int(float(reactions[0].replace(",","."))*m)
     else:
         reactions = 0
+    return reactions
+
+async def get_comments(page, i):
+    data_selector = feed_selector \
+                    + f' > div:nth-child({i})' \
+                    + ' > div'*9 \
+                    + ' > div:nth-child(2)' \
+                    + ' > div'*2 \
+                    + ' > div:nth-child(4)' \
+                    + ' > div'*6 
     
     comments_selector = data_selector + ' > div:nth-child(2)' \
                     + ' > div:nth-child(2)' \
@@ -271,6 +279,16 @@ async def get_data(page, i):
     else:
         comments = 0
 
+    return comments
+
+async def get_shares(page, i):
+    data_selector = feed_selector \
+                    + f' > div:nth-child({i})' \
+                    + ' > div'*9 \
+                    + ' > div:nth-child(2)' \
+                    + ' > div'*2 \
+                    + ' > div:nth-child(4)' \
+                    + ' > div'*6 
     shares_selector = data_selector + ' > div:nth-child(2)' \
                     + ' > div:nth-child(3)' \
                     + ' > span' \
@@ -293,8 +311,7 @@ async def get_data(page, i):
         shares = int(float(shares[0].replace(",","."))*m)
     else:
         shares = 0
-
-    return reactions, comments, shares
+    return shares
 
 async def get_content(page, i):
     selector = feed_selector \
@@ -303,7 +320,6 @@ async def get_content(page, i):
                                    + ' > div:nth-child(2)' \
                                    + ' > div'*2 \
                                    + ' > div:nth-child(3)'
-    element = await page.query_selector(selector)
 
     inner_text = await page.locator(selector).text_content()
 
@@ -471,6 +487,76 @@ async def get_content(page, i):
     #print("yyyyyyyyyyyyyyyy", result['textContent'] )
     #print(result['emojis'], images['img'], result['links'], '\n\n')
     return result['textContent'], result['links'], images['img']
+
+async def scrappe(page, i, group):
+    try: 
+        short_video = await is_short_video(page, i)
+    except:
+        short_video = False
+    if short_video:
+        print("short video")
+        return
+    
+    author_task = asyncio.create_task(get_author(page, i))
+    reactions_task = asyncio.create_task(get_reactions(page, i))
+    comments_task = asyncio.create_task(get_comments(page, i))
+    shares_task = asyncio.create_task(get_shares(page, i))
+    date_task = asyncio.create_task(get_date(page, i))
+    link_task = asyncio.create_task(get_link(page, i))
+    content_task = asyncio.create_task(get_content(page, i))
+    
+
+    try:
+        author = await author_task
+    except Exception as e:
+        author = ["#Error couldn't scrappe: " + e]*2
+    print("author:", author)
+
+
+    try:
+        reactions = await reactions_task
+    except Exception as e:
+        reactions = "#Error couldn't scrappe: " + e
+    print("reactions:", reactions)
+
+    try:
+        comments = await comments_task
+    except Exception as e:
+        comments = "#Error couldn't scrappe: " + e
+    print("comments:", comments)
+
+    try:
+        shares = await shares_task
+    except Exception as e:
+        shares = "#Error couldn't scrappe: " + e
+    print("shares:", shares)
+
+
+    try:
+        date = await date_task
+    except Exception as e:
+        date = datetime.min
+    print("approximated date:", date.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+    try:
+        link = await link_task
+    except Exception as e:
+        link = "#Error couldn't scrappe: " + e
+    print(link)
+
+
+    try:
+        content_links_images = await content_task
+    except Exception as e:
+        content_links_images = ["#Error couldn't scrappe: " + e]*3
+    print("content:",content_links_images[0])
+    print("links:", content_links_images[1])
+    print("images:", content_links_images[2])
+
+
+    new_ligne = [date, content_links_images[0], author[0], author[1], comments, shares, reactions, content_links_images[2], content_links_images[1], group, link]
+    return new_ligne
                     
     
 
@@ -496,7 +582,7 @@ async def main():
         await page.evaluate('''() => {return document.documentElement.requestFullscreen();}''')
         await page.set_viewport_size({'width': 1920, 'height': 1080})
 
-        page.set_default_timeout(10*3600*1000)
+        #page.set_default_timeout(10*3600*1000)
 
         await page.goto("https://www.facebook.com")
         await royal_connect(page)
@@ -517,33 +603,20 @@ async def main():
                 i += 1
                 print("post:", i-1, " |  consecutive old posts:", nb_old_posts)
                 await scroll_into_view(page, i)
-
-                if await is_short_video(page, i):
-                    print("short video")
+                post = await scrappe(page, i, group)
+                if post is None:
                     continue
-                author, author_data = await get_author(page, i)
-                print("author:", author, author_data)
-                reactions, comments, shares = await get_data(page, i)
-                print("reactions:", reactions, "comments:", comments, "shares:", shares)
-                date = await get_date(page, i)
-                if is_old(date):
+
+                if is_old(post[0]):
                     nb_old_posts += 1
                 else:
                     nb_old_posts = 0
-                print("approximated date:", date.strftime("%Y-%m-%d %H:%M:%S"))
-                link = await get_link(page, i)
-                print(link)
-                content, links, images = await get_content(page, i)
-                print("content:",content)
-                print("links:", links)
-                print("images:", images)
-                new_ligne = [date, content, author, author_data, comments, shares, reactions, images, links, group, link]
-                dataset.loc[len(dataset)] = new_ligne
+                dataset.loc[len(dataset)] = post
                 print("")
+            dataset.to_csv("dataset.csv", sep=",")
         await browser.close()
-        dataset.to_csv("dataset.csv")
         end = datetime.now()
-        print(str(end-start))
+        print("Scrapping finished, scrapped", len(groups), "groups and", len(dataset), "posts in", str(end-start))
 
 asyncio.run(main())
 

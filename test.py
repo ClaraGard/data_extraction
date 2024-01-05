@@ -1,3 +1,1 @@
-from datetime import datetime
-
-print(type(datetime.now() - datetime.now()))
+print(["#Error couldn't scrappe: "]*2)
