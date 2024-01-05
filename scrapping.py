@@ -332,7 +332,7 @@ async def get_content(page, i):
                     + ' > div' \
                     + ' > div[role = "button"]'
     button_element = await page.query_selector(button_selector)
-    if button_selector is not None:
+    if button_element is not None:
         button_text = await button_element.text_content()
         if re.search(config.misc.see_more, button_text, re.IGNORECASE) and re.search(config.misc.know_more, button_text, re.IGNORECASE) is None:
             await page.wait_for_selector(button_selector)
