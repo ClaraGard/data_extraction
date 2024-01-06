@@ -233,7 +233,6 @@ async def main():
                 dataset.loc[len(dataset)] = post.get_csv_line()
                 print("")
                 database.insert_post(post, session)
-                database.commit_session(session)
             dataset.to_csv("dataset_headless.csv")
         await browser.close()
         end = datetime.now()

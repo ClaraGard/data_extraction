@@ -22,23 +22,23 @@ class Link(Base):
     __tablename__ = 'link'
     id = Column(INTEGER, primary_key=True)
     link = Column(String, nullable=False, unique=True)
-    posts = relationship('post', secondary=PostLink, back_populates='link')
+    posts = relationship('Post', secondary=PostLink, back_populates='links')
 
 class Image(Base):
     __tablename__ = 'image'
     id = Column(INTEGER, primary_key=True)
     link = Column(String, nullable=False, unique=True)
-    posts = relationship('post', secondary=PostImage, back_populates='image')
+    posts = relationship('Post', secondary=PostImage, back_populates='images')
 
 
 class Post(Base):
     __tablename__ = "post"
     id = Column(INTEGER, primary_key=True)
     link = Column(String(1000), nullable=False, unique=True)
-    date = Column(DateTime, nullable=False)
-    author = Column(String(50), nullable=False)
-    author_data = Column(String(50), nullable=False)
-    content = Column(String, nullable=False)
+    date = Column(DateTime, nullable=True)
+    author = Column(String(50), nullable=True)
+    author_data = Column(String(50), nullable=True)
+    content = Column(String, nullable=True)
     group_link = Column(String(1000), nullable=False)
     reactions = Column(INTEGER, nullable=False)
     comments = Column(INTEGER, nullable=False)
@@ -46,12 +46,10 @@ class Post(Base):
     scrapping_date = Column(DateTime, nullable=False)
 
     links = relationship('Link', secondary=PostLink, 
-                         back_populates='post',
-                         cascade='all, delete-orphan')
+                         back_populates='posts')
     
     images = relationship('Image', secondary=PostImage, 
-                          back_populates='post',
-                          cascade='all, delete-orphan')
+                          back_populates='posts')
 
     def __init__(self, link, date, author, author_data, content, group_link, reactions, comments, shares, scrapping_date):
         self.link = link
@@ -69,21 +67,12 @@ engine = create_engine("sqlite:///dataextraction.db")
 
 Base.metadata.create_all(bind=engine)
 
-session = sessionmaker(bind=engine)
+session = sessionmaker(bind=engine, autoflush=False)
 
 session = session()
 
 def get_session():
-    return session
-
-def commit_session(session):
-    try:
-        session.commit()
-        print("Post added successfully.")
-    except Exception as e:
-        session.rollback()  # Rollback the changes on error
-        print("Failed to add post to the database.")
-        print(e)        
+    return session  
 
 def close_session(session):
     session.close()
@@ -113,6 +102,8 @@ def insert_post(post, session):
             scrapping_date=post.scrapping_date
         )
 
+        session.add(new_post)
+
         # Process images and links similar to before
         for image_link in post.images:
             image = session.query(Image).filter_by(link=image_link).first()
@@ -129,21 +120,12 @@ def insert_post(post, session):
             new_post.links.append(link)
 
         # Add the new Post object to the session if it's new
-        session.add(new_post)
 
     # Commit the session to save the changes to the database
-    session.commit()
-
-post = Post(
-    date=datetime.now(),
-    content="Sample post content",
-    author="Author Name",
-    author_data="Author Bio",
-    comments=10,
-    shares=5,
-    reactions=100,
-    group_link="http://group-link.com",
-    link="http://post-link.com",
-    scrapping_date=datetime.now()
-)
-
+    try:
+        session.commit()
+        print("Post added successfully.")
+    except Exception as e:
+        session.rollback()  # Rollback the changes on error
+        print("Failed to add post to the database.")
+        print(e)      

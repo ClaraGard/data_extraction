@@ -400,4 +400,7 @@ async def get_content(page, i):
     
     #print("yyyyyyyyyyyyyyyy", result['textContent'] )
     #print(result['emojis'], images['img'], result['links'], '\n\n')
+    
+    result['links'] = [i for i in result['links'] if i is not None]
+    images['img'] = [i for i in images['img'] if i is not None]
     return result['textContent'], result['links'], images['img']
