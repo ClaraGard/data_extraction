@@ -1,0 +1,24 @@
+appdirs==1.4.4
+Brotli @ file:///C:/ci_311/brotli-split_1676435766766/work
+certifi==2023.11.17
+colorama==0.4.6
+greenlet==3.0.1
+importlib-metadata==6.8.0
+numpy==1.26.2
+pandas==2.1.4
+playwright==1.40.0
+pyee==11.0.1
+pyppeteer==1.0.2
+PySocks @ file:///C:/ci_311/pysocks_1676425991111/work
+python-dateutil==2.8.2
+pytz==2023.3.post1
+regex @ file:///C:/b/abs_d5e2e5uqmr/croot/regex_1696515472506/work
+selenium @ file:///C:/ci_311/selenium_1676492790615/work
+six==1.16.0
+tqdm==4.66.1
+typing_extensions==4.9.0
+tzdata==2023.4
+urllib3==1.26.18
+websockets==10.4
+win-inet-pton @ file:///C:/ci_311/win_inet_pton_1676425458225/work
+zipp==3.17.0

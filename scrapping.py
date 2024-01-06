@@ -1,94 +1,8 @@
-import asyncio
-from playwright.async_api import async_playwright
-import pandas as pd
-import time
-import random
 import regex as re
 from datetime import datetime, timedelta
-from config import Config
+import config
 
 feed_selector = 'div[role = "feed"]'
-config_json = pd.read_json('config.json')
-account = Config.Account(config_json["account"]["email"], config_json["account"]["password"])
-date = Config.Date(config_json["date"]["years"], config_json["date"]["months"], config_json["date"]["weeks"], config_json["date"]["days"], config_json["date"]["hours"], config_json["date"]["minutes"], config_json["date"]["months of the year"])
-multipliers = Config.Multipliers(config_json["multipliers"]["thousands"], config_json["multipliers"]["millions"], config_json["multipliers"]["millions"])
-timings = Config.Timings(config_json["timings"]["time to load page"], config_json["multipliers"]["timeout"])
-misc = Config.Misc(config_json["misc"]["see more"], config_json["misc"]["know more"])
-config = Config(account, date, multipliers, timings, misc)
-
-def is_old(date):
-    return datetime.now() - date >= timedelta(days=2, minutes=1)
-
-def randomsleep(min, max):
-    time.sleep(random.randint(min*1000, max*1000)/1000)
-
-async def randomscroll(page, min, max):
-    scrolls = random.randint(min, max)
-    print("scrolling", scrolls, "times")
-    for _ in range(scrolls):
-        await page.mouse.wheel(0, 700)
-        randomsleep(0.05, 0.6)
-    
-async def scroll_if_needed(element, page):
-    has_children = await element.query_selector('xpath=child::*')
-    if not has_children:
-        await randomscroll(page, 5, 10)
-        randomsleep(1.5, 3)
-
-async def scroll_into_view(page, i):
-    print("scrolling...")
-    post = feed_selector + f' > div:nth-child({i})'
-    element = await page.query_selector(post)
-    await element.evaluate("element => element.scrollIntoViewIfNeeded()")
-    randomsleep(0.5, 1.5)
-    print("done scrolling")
-
-async def cookies(page):
-    print("cookies")
-    button_selector = '[data-cookiebanner = "accept_only_essential_button"]'
-    if await page.query_selector(button_selector) == None:
-        return False
-    await page.click(button_selector)
-    randomsleep(0.5, 2.5)
-    return True
-
-async def connect(page):
-    print("connect")
-    await cookies(page)
-    mail_selector = '[id = "email"]'
-    password_selector = '[id = "pass"]'
-    button_selector = '[id = "loginbutton"]'
-    if await page.query_selector(mail_selector) == None:
-        return False
-    
-    randomsleep(1.5, 4)
-    await page.fill(mail_selector, config.account.email)
-    randomsleep(1.5, 4)
-    await page.fill(password_selector, config.account.password)
-    randomsleep(1, 2)
-    await page.click(button_selector)
-    await page.wait_for_load_state('load')
-    randomsleep(config.timings.time_to_load, config.timings.time_to_load+2)
-    return True
-
-async def royal_connect(page):
-    print("royal_connect")
-    await cookies(page)
-    mail_selector = '[data-testid = "royal_email"]'
-    password_selector = '[data-testid = "royal_pass"]'
-    button_selector = '[data-testid = "royal_login_button"]'
-    if await page.query_selector(mail_selector) == None:
-        return False
-    
-    randomsleep(1.5, 4)
-    await page.fill(mail_selector, config.account.email)
-    randomsleep(1.5, 4)
-    await page.fill(password_selector, config.account.password)
-    randomsleep(1, 2)
-    await page.click(button_selector)
-    await page.wait_for_load_state('load')
-    randomsleep(config.timings.time_to_load, config.timings.time_to_load+2)
-    return True
 
 async def is_short_video(page, i):
     post = feed_selector + f' > div:nth-child({i})'
@@ -111,8 +25,6 @@ async def is_short_video(page, i):
     return reel == "Reels"
 
 async def get_author(page, i):
-    post = feed_selector + f' > div:nth-child({i})'
-    element = await page.query_selector(post)
 
     author_and_data_selector = feed_selector \
                     + f' > div:nth-child({i})' \
@@ -190,24 +102,24 @@ async def get_date(page, i):
     numbers = list(map(int, re.findall(r'\d+', date_string)))
     date = datetime.now()
     if len(numbers) > 1:
-        for i in range(len(config.date.months_of_the_year)):
-            if config.date.months_of_the_year[i] in date_string:
+        for i in range(len(config.config.date.months_of_the_year)):
+            if config.config.date.months_of_the_year[i] in date_string:
                 date = datetime(year=numbers[1], day=numbers[0], month=i)
                 break
             if i == 11:
                 raise Exception("Date format unrecognized "+date_string)
     
-    elif config.date.years in date_string:
+    elif config.config.date.years in date_string:
         date -= timedelta(days=365*numbers[0])
-    elif config.date.months in date_string:
+    elif config.config.date.months in date_string:
         date -= timedelta(days=30*numbers[0])
-    elif config.date.weeks in date_string:
+    elif config.config.date.weeks in date_string:
         date -= timedelta(days=7*numbers[0])
-    elif config.date.days in date_string:
+    elif config.config.date.days in date_string:
         date -= timedelta(days=numbers[0])
-    elif config.date.hours in date_string:
+    elif config.config.date.hours in date_string:
         date -= timedelta(hours=numbers[0])
-    elif config.date.minutes in date_string:
+    elif config.config.date.minutes in date_string:
         date -= timedelta(minutes=numbers[0])
     else:
         raise Exception("Date format unrecognized "+date_string)
@@ -235,11 +147,11 @@ async def get_reactions(page, i):
         reactions = reactions.split()
         if len(reactions) == 1:
             m = 1
-        elif reactions[1] == config.multipliers.thousands:
+        elif reactions[1] == config.config.multipliers.thousands:
             m = 1000
-        elif reactions[1] == config.multipliers.millions:
+        elif reactions[1] == config.config.multipliers.millions:
             m = 1000000
-        elif reactions[1] == config.multipliers.billions:
+        elif reactions[1] == config.config.multipliers.billions:
             m = 1000000000
         else:
             m = 1
@@ -268,11 +180,11 @@ async def get_comments(page, i):
         comments = comments.split()
         if len(comments) == 1:
             m = 1
-        elif comments[1] == config.multipliers.thousands:
+        elif comments[1] == config.config.multipliers.thousands:
             m = 1000
-        elif comments[1] == config.multipliers.millions:
+        elif comments[1] == config.config.multipliers.millions:
             m = 1000000
-        elif comments[1] == config.multipliers.billions:
+        elif comments[1] == config.config.multipliers.billions:
             m = 1000000000
         else:
             m = 1
@@ -301,11 +213,11 @@ async def get_shares(page, i):
         shares = shares.split()
         if len(shares) == 1:
             m = 1
-        elif shares[1] == config.multipliers.thousands:
+        elif shares[1] == config.config.multipliers.thousands:
             m = 1000
-        elif shares[1] == config.multipliers.millions:
+        elif shares[1] == config.config.multipliers.millions:
             m = 1000000
-        elif shares[1] == config.multipliers.billions:
+        elif shares[1] == config.config.multipliers.billions:
             m = 1000000000
         else:
             m = 1
@@ -332,7 +244,7 @@ async def get_content(page, i):
     button_element = await page.query_selector(button_selector)
     if button_element is not None:
         button_text = await button_element.text_content()
-        if re.search(config.misc.see_more, button_text, re.IGNORECASE) and re.search(config.misc.know_more, button_text, re.IGNORECASE) is None:
+        if re.search(config.config.misc.see_more, button_text, re.IGNORECASE) and re.search(config.config.misc.know_more, button_text, re.IGNORECASE) is None:
             await page.wait_for_selector(button_selector)
             await page.click(button_selector)
             #print('yeah')
@@ -489,138 +401,3 @@ async def get_content(page, i):
     #print("yyyyyyyyyyyyyyyy", result['textContent'] )
     #print(result['emojis'], images['img'], result['links'], '\n\n')
     return result['textContent'], result['links'], images['img']
-
-async def scrappe(page, i, group):
-    try: 
-        short_video = await is_short_video(page, i)
-    except:
-        short_video = False
-    if short_video:
-        print("short video")
-        return
-    
-    author_task = asyncio.create_task(get_author(page, i))
-    reactions_task = asyncio.create_task(get_reactions(page, i))
-    comments_task = asyncio.create_task(get_comments(page, i))
-    shares_task = asyncio.create_task(get_shares(page, i))
-    date_task = asyncio.create_task(get_date(page, i))
-    link_task = asyncio.create_task(get_link(page, i))
-    content_task = asyncio.create_task(get_content(page, i))
-    
-
-    try:
-        author = await author_task
-    except Exception as e:
-        author = ["#Error couldn't scrappe: " + str(e)]*2
-    print("author:", author)
-
-
-    try:
-        reactions = await reactions_task
-    except Exception as e:
-        reactions = "#Error couldn't scrappe: " + str(e)
-    print("reactions:", reactions)
-
-    try:
-        comments = await comments_task
-    except Exception as e:
-        comments = "#Error couldn't scrappe: " + str(e)
-    print("comments:", comments)
-
-    try:
-        shares = await shares_task
-    except Exception as e:
-        shares = "#Error couldn't scrappe: " + str(e)
-    print("shares:", shares)
-
-
-    try:
-        date = await date_task
-    except Exception as e:
-        date = datetime.min
-    print("approximated date:", date.strftime("%Y-%m-%d %H:%M:%S"))
-
-
-    try:
-        link = await link_task
-    except Exception as e:
-        link = "#Error couldn't scrappe: " + str(e)
-    print(link)
-
-
-    try:
-        content_links_images = await content_task
-    except Exception as e:
-        content_links_images = ["#Error couldn't scrappe: " + str(e)]*3
-    print("content:",content_links_images[0])
-    print("links:", content_links_images[1])
-    print("images:", content_links_images[2])
-
-
-    new_ligne = [date, content_links_images[0], author[0], author[1], comments, shares, reactions, content_links_images[2], content_links_images[1], group, link]
-    return new_ligne
-                    
-    
-
-async def main():
-    groups = pd.read_json('groups.json')['groups_names'].unique()
-    columns = ['date',
-               'text',
-               'author',
-               'authordata',
-               'nbcomments',
-               'nbshares',
-               'nbreacts',
-               'images',
-               'links',
-               'group',
-               'link']
-    dataset = pd.DataFrame(columns = columns)
-
-    start = datetime.now()
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless = False)
-        page = await browser.new_page()
-        await page.evaluate('''() => {return document.documentElement.requestFullscreen();}''')
-        await page.set_viewport_size({'width': 1920, 'height': 1080})
-
-        #page.set_default_timeout(10*3600*1000)
-
-        await page.goto("https://www.facebook.com")
-        await royal_connect(page)
-        await connect(page)
-
-        for group in groups:
-            await page.goto(group)
-            randomsleep(config.timings.time_to_load, config.timings.time_to_load+2)
-            print("\n---------------\n")
-            print(group)
-
-            await royal_connect(page)
-            await connect(page)
-
-            i = 1
-            nb_old_posts = 0
-            while nb_old_posts<20:
-                i += 1
-                print("post:", i-1, " |  consecutive old posts:", nb_old_posts)
-                await scroll_into_view(page, i)
-                post = await scrappe(page, i, group)
-                if post is None:
-                    continue
-
-                if is_old(post[0]):
-                    nb_old_posts += 1
-                else:
-                    nb_old_posts = 0
-                dataset.loc[len(dataset)] = post
-                print("")
-            dataset.to_csv("dataset.csv", sep=",")
-        await browser.close()
-        end = datetime.now()
-        print("Scrapping finished, scrapped", len(groups), "groups and", len(dataset), "posts in", str(end-start))
-
-asyncio.run(main())
-
-
-
