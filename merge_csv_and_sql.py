@@ -30,7 +30,7 @@ for i in range(len(dataset)):
     links_list = [i for i in links_list if i is not None]
     images_list = ast.literal_eval(line["images"])
     images_list = [i for i in images_list if i is not None]
-    post = Post(datetime_object, line["text"], line["author"], line["authordata"], line["nbcomments"], line["nbshares"], line["nbreacts"], images_list,
+    post = Post(datetime_object, line["text"], line["author"], line["authordata"], int(line["nbcomments"]), int(line["nbshares"]), int(line["nbreacts"]), images_list,
                  links_list, line["group"], line["link"], datetime(year=2024, month=1, day=5))
     database.insert_post(post, session)
 
