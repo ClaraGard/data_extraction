@@ -196,6 +196,7 @@ async def main():
     else:
         dataset = pd.read_csv(config.config.files.input)
 
+    size_beginning = len(dataset)
     start = datetime.now()
     async with async_playwright() as p:
         headless = True
@@ -235,15 +236,13 @@ async def main():
                     nb_old_posts += 1
                 else:
                     nb_old_posts = 0
-                print(dataset)
-                print(post.get_csv_line())
                 dataset.loc[len(dataset)] = post.get_csv_line()
                 print("")
                 database.insert_post(post, session)
             dataset.to_csv(config.config.files.output, index=False)
         await browser.close()
         end = datetime.now()
-        print("Scrapping finished, scrapped", len(groups), "groups and", len(dataset), "posts in", str(end-start))
+        print("Scrapping finished, scrapped", len(groups), "groups and", len(dataset)-size_beginning, "posts in", str(end-start))
 
 asyncio.run(main())
 
