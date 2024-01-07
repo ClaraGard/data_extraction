@@ -1,4 +1,9 @@
 {
+    "files": {
+        "input": "dataset.csv",
+        "output": "dataset.csv"
+    },
+
     "timings": {
         "time to load page": 4,
         "timeout": 10

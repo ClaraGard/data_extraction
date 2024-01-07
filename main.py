@@ -9,7 +9,6 @@ import config
 import scrapping
 import database
 
-
 class Post():
     def __init__(self, date, content, author, author_data, comments, shares, reactions, images, links, group_link, link, scrapping_date):
         self.date = date
@@ -26,7 +25,9 @@ class Post():
         self.scrapping_date = scrapping_date
     
     def get_csv_line(self):
-        return [self.date, self.content, self.author, self.author_data, self.comments, self.shares, self.reactions, self.images, self.links, self.group_link, self.link, self.scrapping_date]
+        l = [self.date, self.content, self.author, self.author_data, self.comments, self.shares, self.reactions, self.images, self.links, self.group_link, self.link, self.scrapping_date]
+        return [str(i) for i in l]
+
 
 
 feed_selector = 'div[role = "feed"]'
@@ -178,25 +179,29 @@ async def scrappe(page, i, group):
 async def main():
     groups = pd.read_json('groups.json')['groups_names'].unique()
     session = database.get_session()
-    columns = ['date',
-               'text',
-               'author',
-               'authordata',
-               'nbcomments',
-               'nbshares',
-               'nbreacts',
-               'images',
-               'links',
-               'group',
-               'link',
-               'scrappingdate']
-    dataset = pd.DataFrame(columns = columns)
+    if config.config.files.input == "":
+        columns = ['date',
+                'text',
+                'author',
+                'authordata',
+                'nbcomments',
+                'nbshares',
+                'nbreacts',
+                'images',
+                'links',
+                'group',
+                'link',
+                'scrappingdate']
+        dataset = pd.DataFrame(columns = columns)
+    else:
+        dataset = pd.read_csv(config.config.files.input)
 
     start = datetime.now()
     async with async_playwright() as p:
         headless = True
         browser = await p.chromium.launch(headless = headless)
         page = await browser.new_page()
+        page.set_default_timeout(config.config.timings.timeout*1000)
         if not headless:
             await page.evaluate('''() => {return document.documentElement.requestFullscreen();}''')
             await page.set_viewport_size({'width': 1920, 'height': 1080})
@@ -230,10 +235,12 @@ async def main():
                     nb_old_posts += 1
                 else:
                     nb_old_posts = 0
+                print(dataset)
+                print(post.get_csv_line())
                 dataset.loc[len(dataset)] = post.get_csv_line()
                 print("")
                 database.insert_post(post, session)
-            dataset.to_csv("dataset_headless.csv")
+            dataset.to_csv(config.config.files.output, index=False)
         await browser.close()
         end = datetime.now()
         print("Scrapping finished, scrapped", len(groups), "groups and", len(dataset), "posts in", str(end-start))

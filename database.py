@@ -78,17 +78,14 @@ def close_session(session):
     session.close()
 
 def insert_post(post, session):
-    # Check if the post already exists in the database
     existing_post = session.query(Post).filter_by(link=post.link).first()
 
     if existing_post:
-        # Update existing post
         existing_post.reactions = post.reactions
         existing_post.comments = post.comments
         existing_post.shares = post.shares
         existing_post.scrapping_date = post.scrapping_date
     else:
-        # Create a new Post object if it doesn't exist
         new_post = Post(
             link=post.link,
             date=post.date,
@@ -104,7 +101,6 @@ def insert_post(post, session):
 
         session.add(new_post)
 
-        # Process images and links similar to before
         for image_link in post.images:
             image = session.query(Image).filter_by(link=image_link).first()
             if not image:
@@ -119,12 +115,13 @@ def insert_post(post, session):
                 session.add(link)
             new_post.links.append(link)
 
-        # Add the new Post object to the session if it's new
-
-    # Commit the session to save the changes to the database
     try:
         session.commit()
-        print("Post added successfully.")
+        if existing_post:
+            print("Post updated successfully.")
+        else:
+            print("Post added successfully.")
+
     except Exception as e:
         session.rollback()  # Rollback the changes on error
         print("Failed to add post to the database.")

@@ -5,18 +5,20 @@ def setconfig():
     account = Config.Account(config_json["account"]["email"], config_json["account"]["password"])
     date = Config.Date(config_json["date"]["years"], config_json["date"]["months"], config_json["date"]["weeks"], config_json["date"]["days"], config_json["date"]["hours"], config_json["date"]["minutes"], config_json["date"]["months of the year"])
     multipliers = Config.Multipliers(config_json["multipliers"]["thousands"], config_json["multipliers"]["millions"], config_json["multipliers"]["millions"])
-    timings = Config.Timings(config_json["timings"]["time to load page"], config_json["multipliers"]["timeout"])
+    timings = Config.Timings(config_json["timings"]["time to load page"], config_json["timings"]["timeout"])
+    files = Config.Files(config_json["files"]["input"], config_json["files"]["output"])
     misc = Config.Misc(config_json["misc"]["see more"], config_json["misc"]["know more"])
-    config = Config(account, date, multipliers, timings, misc)
+    config = Config(account, date, multipliers, timings, files, misc)
     return config
 
 
 class Config:
-    def __init__(self, account, date, multipliers, timings, misc):
+    def __init__(self, account, date, multipliers, timings, files, misc):
         self.account = account
         self.date = date
         self.multipliers = multipliers
         self.timings = timings
+        self.files = files
         self.misc = misc
 
     class Account:
@@ -44,6 +46,11 @@ class Config:
         def __init__(self, time_to_load, timeout):
             self.time_to_load = time_to_load
             self.timeout = timeout
+
+    class Files:
+        def __init__(self, input, output):
+            self.input = input
+            self.output = output
     
     class Misc:
         def __init__(self, see_more, know_more):
