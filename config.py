@@ -2,7 +2,7 @@ import pandas as pd
 
 def setconfig():
     config_json = pd.read_json('config.json')
-    account = Config.Account(config_json["account"]["email"], config_json["account"]["password"])
+    account = Config.Account(config_json["account"]["email"], config_json["account"]["username"], config_json["account"]["password"])
     date = Config.Date(config_json["date"]["years"], config_json["date"]["months"], config_json["date"]["weeks"], config_json["date"]["days"], config_json["date"]["hours"], config_json["date"]["minutes"], config_json["date"]["months of the year"])
     multipliers = Config.Multipliers(config_json["multipliers"]["thousands"], config_json["multipliers"]["millions"], config_json["multipliers"]["millions"])
     timings = Config.Timings(config_json["timings"]["time to load page"], config_json["timings"]["timeout"])
@@ -22,8 +22,9 @@ class Config:
         self.misc = misc
 
     class Account:
-        def __init__(self, email, password):
+        def __init__(self, email, username, password):
             self.email = email
+            self.username = username
             self.password = password
 
     class Date:
